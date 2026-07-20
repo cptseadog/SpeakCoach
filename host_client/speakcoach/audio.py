@@ -63,6 +63,16 @@ def record_seconds(seconds: float) -> bytes:
     return rec.stop()
 
 
+def rms(wav: bytes) -> float:
+    """Overall RMS level of WAV bytes (0..1). Whisper hallucinates phrases like
+    'Thank you.' on silence, so callers gate on this before transcribing."""
+    import numpy as np
+    import soundfile as sf
+
+    data, _ = sf.read(io.BytesIO(wav), dtype="float32")
+    return float(np.sqrt((data**2).mean())) if len(data) else 0.0
+
+
 def play(wav: bytes) -> None:
     """Play WAV bytes on the default output device, blocking until done."""
     import sounddevice as sd

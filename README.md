@@ -29,6 +29,23 @@ uv run python ../scripts/healthcheck.py
 
 Healthcheck green = every service reachable. Model endpoints return 503 until their milestone lands.
 
+## Daily use: dictation
+
+```bash
+cd host_client && uv run speakcoach dictate
+```
+
+Toggle recording with **Enter** in that terminal, or bind a system-wide GNOME shortcut
+(Settings → Keyboard → View and Customize Shortcuts → Custom Shortcuts) to:
+
+```
+sh -c 'kill -USR1 $(cat /run/user/1000/speakcoach-dictate.pid)'
+```
+
+Flow: toggle → speak → toggle → the cleaned text lands on the clipboard (desktop
+notification confirms) → **Ctrl+V** into whatever text box has focus. Recordings that
+are pure silence are gated out client-side (Whisper hallucinates on silence).
+
 ## GPU flip (when the RTX 5060 Ti arrives — Milestone 8)
 
 1. Install the NVIDIA driver + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
@@ -45,7 +62,7 @@ Healthcheck green = every service reachable. Model endpoints return 503 until th
 | 1 | Skeleton + healthcheck | ✅ |
 | 2 | TTS service (Kokoro) + speak-a-sentence CLI | ✅ |
 | 3 | ASR service + mic capture (record → transcript in terminal) | ✅ |
-| 4 | **Dictation hot path** (first daily-usable build) | — |
+| 4 | **Dictation hot path** (first daily-usable build) | ✅ |
 | 5 | Utterance logging | — |
 | 6 | Coaching path (structured mistakes → SQLite, TTS read-back) | — |
 | 7 | Daily lesson + systemd timer | — |

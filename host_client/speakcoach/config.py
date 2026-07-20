@@ -22,6 +22,8 @@ class Config:
     device: str = field(default_factory=lambda: os.environ.get("DEVICE", "cpu"))
     asr_model: str = field(default_factory=lambda: os.environ.get("ASR_MODEL", "distil-large-v3"))
     llm_model: str = field(default_factory=lambda: os.environ.get("LLM_MODEL", "qwen3:14b"))
+    # hot path can use a smaller/faster model than coaching; defaults to LLM_MODEL
+    dictation_model: str = field(default_factory=lambda: os.environ.get("DICTATION_MODEL") or os.environ.get("LLM_MODEL", "qwen3:14b"))
     tts_backend: str = field(default_factory=lambda: os.environ.get("TTS_BACKEND", "kokoro"))
     tts_voice: str = field(default_factory=lambda: os.environ.get("TTS_VOICE", "af_heart"))
     asr_url: str = field(default_factory=lambda: os.environ.get("ASR_URL", "http://127.0.0.1:8001"))

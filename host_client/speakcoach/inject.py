@@ -5,6 +5,8 @@ xdotool does not work on Wayland. Two backends:
   - YdotoolBackend: auto-types via ydotool. Opt-in, Milestone 9.
 """
 
+import shutil
+import subprocess
 from abc import ABC, abstractmethod
 
 from .config import Config
@@ -12,17 +14,23 @@ from .config import Config
 
 class InjectionBackend(ABC):
     @abstractmethod
-    def inject(self, text: str) -> None:
-        """Deliver text toward the currently focused text box."""
+    def inject(self, text: str) -> str:
+        """Deliver text toward the focused text box. Returns a short human note
+        telling the user what to do next (e.g. 'press Ctrl+V')."""
 
 
 class ClipboardBackend(InjectionBackend):
-    def inject(self, text: str) -> None:
-        raise NotImplementedError("wl-copy integration arrives in Milestone 4")
+    def __init__(self) -> None:
+        if shutil.which("wl-copy") is None:
+            raise RuntimeError("wl-copy not found — install wl-clipboard (see scripts/install_host.sh)")
+
+    def inject(self, text: str) -> str:
+        subprocess.run(["wl-copy", "--", text], check=True, timeout=5)
+        return "copied — press Ctrl+V to paste"
 
 
 class YdotoolBackend(InjectionBackend):
-    def inject(self, text: str) -> None:
+    def inject(self, text: str) -> str:
         raise NotImplementedError("ydotool auto-type arrives in Milestone 9")
 
 

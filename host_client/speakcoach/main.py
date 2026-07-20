@@ -56,9 +56,15 @@ def main() -> None:
     p_speak.add_argument("--out", help="also save the WAV to this path")
     p_tr = sub.add_parser("transcribe", help="record from the mic and print the raw transcript")
     p_tr.add_argument("--seconds", type=float, help="record for a fixed duration instead of Enter-to-stop")
+    sub.add_parser("toggle", help="toggle recording in a running `speakcoach dictate` (for hotkey bindings)")
 
     args = parser.parse_args()
     config = load_config()
+
+    if args.command == "toggle":
+        from .dictation import send_toggle
+        send_toggle()
+        return
 
     if args.command == "transcribe":
         run_transcribe(config, args.seconds)
