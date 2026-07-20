@@ -6,7 +6,10 @@ requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.27",
     "python-dotenv>=1.0",
-    # M3: sounddevice, numpy, silero-vad, hotkey lib (Wayland-compatible)
+    "sounddevice>=0.5",   # needs system libportaudio2 (see install_host.sh)
+    "soundfile>=0.12",
+    "numpy>=1.26",
+    # M3: silero-vad, hotkey lib (Wayland-compatible)
 ]
 
 [project.scripts]

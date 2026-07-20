@@ -1,3 +1,7 @@
+# torch is installed first from the CPU wheel index in the Dockerfile so this
+# resolve doesn't pull the multi-GB CUDA build. M8 swaps that index to cu128.
 fastapi>=0.115
 uvicorn>=0.30
-# M2: kokoro>=0.9 soundfile
+kokoro>=0.9.4
+soundfile>=0.12
+numpy>=1.26
