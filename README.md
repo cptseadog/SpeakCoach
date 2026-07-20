@@ -69,7 +69,7 @@ WAVs for the future pronunciation v2.
 | 3 | ASR service + mic capture (record → transcript in terminal) | ✅ |
 | 4 | **Dictation hot path** (first daily-usable build) | ✅ |
 | 5 | Utterance logging (`speakcoach log` to inspect) | ✅ |
-| 6 | Coaching path (structured mistakes → SQLite, TTS read-back) | — |
+| 6 | Coaching path (structured mistakes → SQLite, TTS read-back) | ✅ |
 | 7 | Daily lesson + systemd timer | — |
 | 8 | GPU flip + latency tuning | — |
 | 9 | ydotool backend + always-on systemd service | — |

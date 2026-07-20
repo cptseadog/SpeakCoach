@@ -6,11 +6,54 @@ qwen3's thinking mode would add seconds of latency per utterance. The
 coaching path (M6) can afford /v1 + structured output.
 """
 
+import json
 import re
 
 import httpx
 
 from .config import Config
+
+MISTAKE_CATEGORIES = (
+    "article", "tense", "preposition", "word_choice",
+    "agreement", "plural", "fluency", "other",
+)
+
+COACH_SYSTEM_PROMPT = """\
+You are an English coach for a motivated non-native speaker. You receive one \
+spoken utterance, transcribed. Analyze grammar, word choice, fluency, and \
+naturalness ONLY (never pronunciation or spelling — this was speech).
+Return JSON with:
+- "corrected": the utterance with minimal fixes, keeping the speaker's wording.
+- "native_alternative": how a native speaker would naturally express the same \
+idea (may rephrase freely).
+- "mistakes": each clear mistake with "category" (one of: %s), \
+"original" (the erroneous fragment), "correction", "explanation" (one plain, \
+friendly sentence), "severity" (1 minor .. 3 impedes understanding).
+Ignore transcription artifacts and casual-register choices that are fine in \
+speech. An utterance with no real mistakes gets an empty mistakes list.""" % ", ".join(MISTAKE_CATEGORIES)
+
+ANALYSIS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "corrected": {"type": "string"},
+        "native_alternative": {"type": "string"},
+        "mistakes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "enum": list(MISTAKE_CATEGORIES)},
+                    "original": {"type": "string"},
+                    "correction": {"type": "string"},
+                    "explanation": {"type": "string"},
+                    "severity": {"type": "integer", "minimum": 1, "maximum": 3},
+                },
+                "required": ["category", "original", "correction", "explanation", "severity"],
+            },
+        },
+    },
+    "required": ["corrected", "native_alternative", "mistakes"],
+}
 
 CLEANUP_SYSTEM_PROMPT = """\
 You clean up dictated speech for an English learner. The text was spoken aloud \
@@ -57,7 +100,52 @@ class LLMClient:
         # a hot path must never eat the user's words — fall back to the raw text
         return cleaned or raw_transcript
 
-    def analyze_mistakes(self, raw_transcript: str) -> list[dict]:
-        """Cold path: structured mistakes (category/original/correction/explanation/
-        severity) plus a native-idiomatic alternative. JSON-only, parsed defensively."""
-        raise NotImplementedError("implemented in Milestone 6")
+    def analyze_mistakes(self, raw_transcript: str) -> dict:
+        """Cold path: {corrected, native_alternative, mistakes: [...]} — mistakes
+        carry category/original/correction/explanation/severity. Ollama's
+        structured-output `format` pins the shape; parsing is still defensive
+        because local models occasionally ignore schemas."""
+        resp = httpx.post(
+            f"{self.base_url}/api/chat",
+            json={
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": COACH_SYSTEM_PROMPT},
+                    {"role": "user", "content": raw_transcript},
+                ],
+                "format": ANALYSIS_SCHEMA,
+                "think": False,
+                "stream": False,
+                "keep_alive": "30m",
+                "options": {"temperature": 0.3},
+            },
+            timeout=httpx.Timeout(600.0, connect=5.0),
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(f"LLM service error ({resp.status_code}): {resp.text[:300]}")
+        content = _THINK_RE.sub("", resp.json().get("message", {}).get("content", "")).strip()
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"coach returned unparseable JSON: {e}\n{content[:300]}") from None
+
+        mistakes = []
+        for m in data.get("mistakes") or []:
+            if not isinstance(m, dict):
+                continue
+            if not all(isinstance(m.get(k), str) and m[k].strip() for k in ("original", "correction", "explanation")):
+                continue
+            category = m.get("category")
+            severity = m.get("severity")
+            mistakes.append({
+                "category": category if category in MISTAKE_CATEGORIES else "other",
+                "original": m["original"].strip(),
+                "correction": m["correction"].strip(),
+                "explanation": m["explanation"].strip(),
+                "severity": min(3, max(1, severity)) if isinstance(severity, int) else 1,
+            })
+        return {
+            "corrected": str(data.get("corrected") or raw_transcript).strip(),
+            "native_alternative": str(data.get("native_alternative") or "").strip(),
+            "mistakes": mistakes,
+        }

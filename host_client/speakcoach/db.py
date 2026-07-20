@@ -66,6 +66,48 @@ def log_utterance(
         return None
 
 
+def update_utterance_cleaned(db_path: Path, utterance_id: int | None, cleaned: str) -> None:
+    """Backfill cleaned_text once practice analysis produces the corrected form."""
+    if utterance_id is None:
+        return
+    try:
+        conn = init_db(db_path)
+        try:
+            with conn:
+                conn.execute(
+                    "UPDATE utterance SET cleaned_text = ? WHERE id = ?", (cleaned, utterance_id)
+                )
+        finally:
+            conn.close()
+    except (sqlite3.Error, OSError) as e:
+        print(f"  (warning: failed to update utterance: {e})")
+
+
+def insert_mistakes(db_path: Path, utterance_id: int | None, mistakes: list[dict]) -> int:
+    """Persist coach-found mistakes; returns how many rows landed. Never raises."""
+    if not mistakes:
+        return 0
+    try:
+        conn = init_db(db_path)
+        try:
+            with conn:
+                conn.executemany(
+                    "INSERT INTO mistake (utterance_id, category, original, correction,"
+                    " explanation, severity) VALUES (?, ?, ?, ?, ?, ?)",
+                    [
+                        (utterance_id, m["category"], m["original"], m["correction"],
+                         m["explanation"], m["severity"])
+                        for m in mistakes
+                    ],
+                )
+            return len(mistakes)
+        finally:
+            conn.close()
+    except (sqlite3.Error, KeyError, OSError) as e:
+        print(f"  (warning: failed to log mistakes: {e})")
+        return 0
+
+
 def recent_utterances(db_path: Path, limit: int = 10) -> list[tuple]:
     conn = init_db(db_path)
     try:
