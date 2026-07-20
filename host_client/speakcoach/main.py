@@ -57,9 +57,22 @@ def main() -> None:
     p_tr = sub.add_parser("transcribe", help="record from the mic and print the raw transcript")
     p_tr.add_argument("--seconds", type=float, help="record for a fixed duration instead of Enter-to-stop")
     sub.add_parser("toggle", help="toggle recording in a running `speakcoach dictate` (for hotkey bindings)")
+    p_log = sub.add_parser("log", help="show recent logged utterances")
+    p_log.add_argument("--limit", type=int, default=10)
 
     args = parser.parse_args()
     config = load_config()
+
+    if args.command == "log":
+        from .db import recent_utterances
+        rows = recent_utterances(config.db_path, args.limit)
+        if not rows:
+            print(f"no utterances logged yet ({config.db_path})")
+        for id_, ts, mode, raw, cleaned in rows:
+            print(f"#{id_} [{ts}] ({mode})")
+            print(f"  raw:     {raw}")
+            print(f"  cleaned: {cleaned}")
+        return
 
     if args.command == "toggle":
         from .dictation import send_toggle

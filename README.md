@@ -46,6 +46,11 @@ Flow: toggle → speak → toggle → the cleaned text lands on the clipboard (d
 notification confirms) → **Ctrl+V** into whatever text box has focus. Recordings that
 are pure silence are gated out client-side (Whisper hallucinates on silence).
 
+Every utterance (raw + cleaned) is logged to SQLite at `DB_PATH`
+(default `~/.local/share/speakcoach/speakcoach.db`) for the coaching path;
+`uv run speakcoach log` shows recent entries. Set `AUDIO_KEEP=true` to also retain
+WAVs for the future pronunciation v2.
+
 ## GPU flip (when the RTX 5060 Ti arrives — Milestone 8)
 
 1. Install the NVIDIA driver + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
@@ -63,7 +68,7 @@ are pure silence are gated out client-side (Whisper hallucinates on silence).
 | 2 | TTS service (Kokoro) + speak-a-sentence CLI | ✅ |
 | 3 | ASR service + mic capture (record → transcript in terminal) | ✅ |
 | 4 | **Dictation hot path** (first daily-usable build) | ✅ |
-| 5 | Utterance logging | — |
+| 5 | Utterance logging (`speakcoach log` to inspect) | ✅ |
 | 6 | Coaching path (structured mistakes → SQLite, TTS read-back) | — |
 | 7 | Daily lesson + systemd timer | — |
 | 8 | GPU flip + latency tuning | — |

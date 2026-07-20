@@ -1,6 +1,7 @@
 """SQLite access. Schema per the project brief; writes begin in Milestone 5."""
 
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 
 SCHEMA = """
@@ -36,3 +37,42 @@ def init_db(db_path: Path) -> sqlite3.Connection:
     conn.executescript(SCHEMA)
     conn.commit()
     return conn
+
+
+def log_utterance(
+    db_path: Path,
+    mode: str,
+    raw_transcript: str,
+    cleaned_text: str | None,
+    audio_path: str | None = None,
+) -> int | None:
+    """Persist one utterance. Never raises — the hot path must not break on
+    logging problems; failures print a warning and return None."""
+    ts = datetime.now().isoformat(timespec="seconds")
+    try:
+        conn = init_db(db_path)
+        try:
+            with conn:
+                cur = conn.execute(
+                    "INSERT INTO utterance (ts, mode, raw_transcript, cleaned_text, audio_path)"
+                    " VALUES (?, ?, ?, ?, ?)",
+                    (ts, mode, raw_transcript, cleaned_text, audio_path),
+                )
+            return cur.lastrowid
+        finally:
+            conn.close()
+    except (sqlite3.Error, OSError) as e:
+        print(f"  (warning: failed to log utterance: {e})")
+        return None
+
+
+def recent_utterances(db_path: Path, limit: int = 10) -> list[tuple]:
+    conn = init_db(db_path)
+    try:
+        return conn.execute(
+            "SELECT id, ts, mode, raw_transcript, cleaned_text FROM utterance"
+            " ORDER BY id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    finally:
+        conn.close()

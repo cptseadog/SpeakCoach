@@ -19,11 +19,12 @@ from pathlib import Path
 
 from .asr_client import ASRClient
 from .audio import Recorder, rms
-
-SILENCE_RMS = 0.001  # measured ambient on this setup is ~0.0001; speech is >0.01
 from .config import Config
+from .db import log_utterance
 from .inject import get_backend
 from .llm_client import LLMClient
+
+SILENCE_RMS = 0.001  # measured ambient on this setup is ~0.0001; speech is >0.01
 
 
 def _notify(summary: str, body: str = "") -> None:
@@ -107,6 +108,15 @@ def run_dictation(config: Config) -> None:
             cleaned = llm.clean_dictation(raw)
             t2 = time.monotonic()
             note = backend.inject(cleaned)
+
+            # text is already delivered; logging happens off the critical path
+            audio_path = None
+            if config.audio_keep:
+                audio_dir = config.db_path.parent / "audio"
+                audio_dir.mkdir(parents=True, exist_ok=True)
+                audio_path = str(audio_dir / (time.strftime("%Y%m%d-%H%M%S") + ".wav"))
+                Path(audio_path).write_bytes(wav)
+            log_utterance(config.db_path, "dictation", raw, cleaned, audio_path)
 
             print(f"  raw:     {raw}")
             print(f"  cleaned: {cleaned}")
