@@ -1,0 +1,11 @@
+# Daily mini-lesson generation. Activated in Milestone 7 together with a
+# matching speakcoach-lesson.service that runs: uv run speakcoach lesson
+[Unit]
+Description=Daily SpeakCoach mini-lesson
+
+[Timer]
+OnCalendar=*-*-* 08:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

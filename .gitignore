@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+uv.lock
+*.db
+*.sqlite3
+*.wav
+.pytest_cache/

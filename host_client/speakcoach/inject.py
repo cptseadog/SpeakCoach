@@ -1,0 +1,37 @@
+"""Wayland text injection behind one interface.
+
+xdotool does not work on Wayland. Two backends:
+  - ClipboardBackend (wl-clipboard): copies text; the user presses Ctrl+V. Safe v1 default.
+  - YdotoolBackend: auto-types via ydotool. Opt-in, Milestone 9.
+"""
+
+from abc import ABC, abstractmethod
+
+from .config import Config
+
+
+class InjectionBackend(ABC):
+    @abstractmethod
+    def inject(self, text: str) -> None:
+        """Deliver text toward the currently focused text box."""
+
+
+class ClipboardBackend(InjectionBackend):
+    def inject(self, text: str) -> None:
+        raise NotImplementedError("wl-copy integration arrives in Milestone 4")
+
+
+class YdotoolBackend(InjectionBackend):
+    def inject(self, text: str) -> None:
+        raise NotImplementedError("ydotool auto-type arrives in Milestone 9")
+
+
+def get_backend(config: Config) -> InjectionBackend:
+    backends = {"clipboard": ClipboardBackend, "ydotool": YdotoolBackend}
+    try:
+        return backends[config.injection_backend]()
+    except KeyError:
+        raise ValueError(
+            f"unknown INJECTION_BACKEND {config.injection_backend!r}; "
+            f"expected one of {sorted(backends)}"
+        ) from None

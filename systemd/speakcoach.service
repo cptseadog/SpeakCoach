@@ -1,0 +1,16 @@
+# Always-on host client (user unit). Activated in Milestone 9:
+#   cp systemd/speakcoach.service ~/.config/systemd/user/
+#   systemctl --user enable --now speakcoach
+[Unit]
+Description=SpeakCoach host client (push-to-talk dictation)
+After=default.target
+
+[Service]
+# Adjust the repo path if it moves.
+WorkingDirectory=%h/projects/spoken-english-tutor/host_client
+ExecStart=uv run speakcoach dictate
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

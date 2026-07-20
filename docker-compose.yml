@@ -1,0 +1,39 @@
+# CPU-only base. GPU is layered on via docker-compose.gpu.yml once the card is in:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+# Model servers only — the host client (mic, hotkey, injection) runs natively via uv.
+services:
+  asr:
+    build: ./services/asr
+    ports:
+      - "127.0.0.1:${ASR_PORT:-8001}:8001"
+    environment:
+      DEVICE: ${DEVICE:-cpu}
+      ASR_MODEL: ${ASR_MODEL:-distil-large-v3}
+    volumes:
+      - asr-models:/models
+    restart: unless-stopped
+
+  tts:
+    build: ./services/tts
+    ports:
+      - "127.0.0.1:${TTS_PORT:-8002}:8002"
+    environment:
+      DEVICE: ${DEVICE:-cpu}
+      TTS_VOICE: ${TTS_VOICE:-af_heart}
+      TTS_BACKEND: ${TTS_BACKEND:-kokoro}
+    volumes:
+      - tts-models:/models
+    restart: unless-stopped
+
+  llm:
+    image: ollama/ollama:latest
+    ports:
+      - "127.0.0.1:${LLM_PORT:-11434}:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  asr-models:
+  tts-models:
+  ollama-models:

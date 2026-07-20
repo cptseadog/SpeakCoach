@@ -1,0 +1,36 @@
+# GPU overlay for the RTX 5060 Ti (Blackwell, sm_120). Requires the NVIDIA
+# Container Toolkit. Apply on top of the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
+# Reminder for M8: any image using PyTorch/CUDA must be CUDA 12.8+ with cu128
+# wheels and torch >= 2.7, or sm_120 fails with "no kernel image is available".
+services:
+  asr:
+    environment:
+      DEVICE: cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  tts:
+    environment:
+      DEVICE: cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  llm:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
