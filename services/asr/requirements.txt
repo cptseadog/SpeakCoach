@@ -1,3 +1,4 @@
 fastapi>=0.115
 uvicorn>=0.30
-# M3: faster-whisper>=1.1
+python-multipart>=0.0.9
+faster-whisper>=1.1

@@ -44,7 +44,7 @@ Healthcheck green = every service reachable. Model endpoints return 503 until th
 |---|---|---|
 | 1 | Skeleton + healthcheck | ✅ |
 | 2 | TTS service (Kokoro) + speak-a-sentence CLI | ✅ |
-| 3 | ASR service + mic capture (hotkey → transcript in terminal) | — |
+| 3 | ASR service + mic capture (record → transcript in terminal) | ✅ |
 | 4 | **Dictation hot path** (first daily-usable build) | — |
 | 5 | Utterance logging | — |
 | 6 | Coaching path (structured mistakes → SQLite, TTS read-back) | — |

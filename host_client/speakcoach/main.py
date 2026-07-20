@@ -3,12 +3,43 @@
 import argparse
 
 from . import __version__
-from .audio import play
+from .asr_client import ASRClient
+from .audio import Recorder, play, record_seconds
 from .coaching import run_practice
 from .config import load_config
 from .dictation import run_dictation
 from .lessons import generate_daily_lesson
 from .tts_client import TTSClient
+
+
+def run_transcribe(config, seconds: float | None) -> None:
+    """Milestone 3 loop: capture speech, print the raw ASR transcript."""
+    asr = ASRClient(config)
+
+    def transcribe_and_print(wav: bytes) -> None:
+        if len(wav) < 1000:
+            print("(no audio captured)")
+            return
+        result = asr.transcribe(wav)
+        print(f"[{result['duration']}s audio, transcribed in {result['transcribe_seconds']}s]")
+        print(result["text"] or "(silence)")
+
+    if seconds:
+        print(f"recording {seconds}s — speak now...")
+        transcribe_and_print(record_seconds(seconds))
+        return
+
+    print("Press Enter to start recording, Enter again to stop. Ctrl+C to quit.")
+    while True:
+        try:
+            input("\n[ready] Enter to record > ")
+            rec = Recorder()
+            rec.start()
+            input("[recording] Enter to stop > ")
+            transcribe_and_print(rec.stop())
+        except (KeyboardInterrupt, EOFError):
+            print("\nbye")
+            return
 
 
 def main() -> None:
@@ -23,9 +54,15 @@ def main() -> None:
     p_speak.add_argument("--voice", help="Kokoro voice (default: TTS_VOICE from .env)")
     p_speak.add_argument("--speed", type=float, default=1.0)
     p_speak.add_argument("--out", help="also save the WAV to this path")
+    p_tr = sub.add_parser("transcribe", help="record from the mic and print the raw transcript")
+    p_tr.add_argument("--seconds", type=float, help="record for a fixed duration instead of Enter-to-stop")
 
     args = parser.parse_args()
     config = load_config()
+
+    if args.command == "transcribe":
+        run_transcribe(config, args.seconds)
+        return
 
     if args.command == "speak":
         wav = TTSClient(config).synthesize(args.text, voice=args.voice, speed=args.speed)
