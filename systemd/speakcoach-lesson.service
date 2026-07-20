@@ -1,0 +1,10 @@
+# Generates the daily mini-lesson (paired with speakcoach-lesson.timer).
+# Install (user units, no sudo):
+#   cp systemd/speakcoach-lesson.{service,timer} ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now speakcoach-lesson.timer
+[Unit]
+Description=SpeakCoach daily mini-lesson generation
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/spoken-english-tutor/host_client
+ExecStart=/usr/bin/env uv run speakcoach lesson

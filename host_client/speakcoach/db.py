@@ -108,6 +108,60 @@ def insert_mistakes(db_path: Path, utterance_id: int | None, mistakes: list[dict
         return 0
 
 
+def mistake_stats(db_path: Path, days: int = 14) -> list[tuple[str, int]]:
+    """(category, count) for mistakes in the last `days`, most frequent first."""
+    conn = init_db(db_path)
+    try:
+        return conn.execute(
+            "SELECT m.category, COUNT(*) AS n FROM mistake m"
+            " JOIN utterance u ON u.id = m.utterance_id"
+            " WHERE u.ts >= datetime('now', ?)"
+            " GROUP BY m.category ORDER BY n DESC",
+            (f"-{days} days",),
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def mistake_examples(db_path: Path, categories: list[str], days: int = 14, limit: int = 12) -> list[tuple]:
+    """(category, original, correction, explanation) rows for the given categories."""
+    conn = init_db(db_path)
+    try:
+        marks = ",".join("?" * len(categories))
+        return conn.execute(
+            f"SELECT m.category, m.original, m.correction, m.explanation FROM mistake m"
+            f" JOIN utterance u ON u.id = m.utterance_id"
+            f" WHERE u.ts >= datetime('now', ?) AND m.category IN ({marks})"
+            f" ORDER BY m.id DESC LIMIT ?",
+            (f"-{days} days", *categories, limit),
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def get_lesson(db_path: Path, date: str) -> tuple | None:
+    conn = init_db(db_path)
+    try:
+        return conn.execute(
+            "SELECT topics, content FROM lesson WHERE date = ? ORDER BY id DESC LIMIT 1",
+            (date,),
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+def insert_lesson(db_path: Path, date: str, topics: str, content: str) -> None:
+    conn = init_db(db_path)
+    try:
+        with conn:
+            conn.execute(
+                "INSERT INTO lesson (date, topics, content) VALUES (?, ?, ?)",
+                (date, topics, content),
+            )
+    finally:
+        conn.close()
+
+
 def recent_utterances(db_path: Path, limit: int = 10) -> list[tuple]:
     conn = init_db(db_path)
     try:

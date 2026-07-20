@@ -51,6 +51,17 @@ Every utterance (raw + cleaned) is logged to SQLite at `DB_PATH`
 `uv run speakcoach log` shows recent entries. Set `AUDIO_KEEP=true` to also retain
 WAVs for the future pronunciation v2.
 
+## Daily lesson
+
+`uv run speakcoach lesson` builds one mini-lesson from your most frequent mistake
+categories of the last 14 days (needs ≥3 logged mistakes; idempotent per day).
+To have it generated automatically every morning at 08:00:
+
+```bash
+cp systemd/speakcoach-lesson.{service,timer} ~/.config/systemd/user/
+systemctl --user daemon-reload && systemctl --user enable --now speakcoach-lesson.timer
+```
+
 ## GPU flip (when the RTX 5060 Ti arrives — Milestone 8)
 
 1. Install the NVIDIA driver + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
@@ -70,7 +81,7 @@ WAVs for the future pronunciation v2.
 | 4 | **Dictation hot path** (first daily-usable build) | ✅ |
 | 5 | Utterance logging (`speakcoach log` to inspect) | ✅ |
 | 6 | Coaching path (structured mistakes → SQLite, TTS read-back) | ✅ |
-| 7 | Daily lesson + systemd timer | — |
+| 7 | Daily lesson + systemd timer | ✅ |
 | 8 | GPU flip + latency tuning | — |
 | 9 | ydotool backend + always-on systemd service | — |
 
