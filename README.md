@@ -110,7 +110,7 @@ systemctl --user enable --now ydotoold
 
 and set `INJECTION_BACKEND=ydotool` in `.env`.
 
-## Status
+## Status of the Project
 
 All nine milestones from the project brief (`claude_code_prompt.md`) are complete:
 skeleton/healthcheck, Kokoro TTS, faster-whisper ASR + mic capture, dictation hot
