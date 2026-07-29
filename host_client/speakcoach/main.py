@@ -59,9 +59,23 @@ def main() -> None:
     sub.add_parser("toggle", help="toggle recording in a running `speakcoach dictate` (for hotkey bindings)")
     p_log = sub.add_parser("log", help="show recent logged utterances")
     p_log.add_argument("--limit", type=int, default=10)
+    p_chat = sub.add_parser("chat", help="free conversation practice with a local or API LLM")
+    p_chat.add_argument("--api", action="store_true", help="use the OpenAI-compatible API from .env instead of local Ollama")
+    p_chat.add_argument("--text", action="store_true", help="typed REPL instead of voice")
+    p_chat.add_argument("--correct", action="store_true", help="partner gently recasts your errors while chatting")
+    p_chat.add_argument("--model", help="override the chat model name")
 
     args = parser.parse_args()
     config = load_config()
+
+    if args.command == "chat":
+        from .chat import run_chat
+        try:
+            run_chat(config, use_api=args.api, text_mode=args.text,
+                     correct=args.correct, model_override=args.model)
+        except RuntimeError as e:
+            raise SystemExit(f"error: {e}")
+        return
 
     if args.command == "log":
         from .db import recent_utterances

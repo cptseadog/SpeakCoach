@@ -109,6 +109,28 @@ class LLMClient:
         # a hot path must never eat the user's words — fall back to the raw text
         return cleaned or raw_transcript
 
+    def chat(self, messages: list[dict], model: str | None = None) -> str:
+        """Multi-turn conversation via Ollama's native /api/chat (think=false —
+        same latency reasoning as dictation; /v1 cannot disable qwen3 thinking)."""
+        resp = httpx.post(
+            f"{self.base_url}/api/chat",
+            json={
+                "model": model or self.model,
+                "messages": messages,
+                "think": False,
+                "stream": False,
+                "keep_alive": "30m",
+                "options": {"temperature": 0.8},
+            },
+            timeout=httpx.Timeout(600.0, connect=5.0),
+        )
+        if resp.status_code != 200:
+            raise RuntimeError(f"LLM service error ({resp.status_code}): {resp.text[:300]}")
+        reply = _THINK_RE.sub("", resp.json().get("message", {}).get("content", "")).strip()
+        if not reply:
+            raise RuntimeError("LLM returned an empty chat reply")
+        return reply
+
     def generate_lesson(self, topics: list[str], examples: list[tuple]) -> str:
         """Cold path: build one focused mini-lesson from the user's own recent
         errors. Plain text (it gets stored, printed, and possibly read aloud)."""

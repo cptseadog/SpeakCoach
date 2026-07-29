@@ -28,6 +28,22 @@ CREATE TABLE IF NOT EXISTS lesson (
   topics TEXT NOT NULL,         -- JSON: the 1-2 error patterns targeted
   content TEXT NOT NULL         -- generated mini-lesson + practice prompts
 );
+CREATE TABLE IF NOT EXISTS chat_session (
+  id INTEGER PRIMARY KEY,
+  started_ts TEXT NOT NULL,
+  ended_ts TEXT,
+  backend TEXT NOT NULL,        -- 'local' | 'api'
+  model TEXT NOT NULL,
+  correct_mode INTEGER NOT NULL DEFAULT 0,
+  summary TEXT                  -- end-of-session note from the chat model
+);
+CREATE TABLE IF NOT EXISTS chat_message (
+  id INTEGER PRIMARY KEY,
+  session_id INTEGER REFERENCES chat_session(id),
+  role TEXT NOT NULL,           -- 'user' | 'assistant'
+  content TEXT NOT NULL,
+  utterance_id INTEGER REFERENCES utterance(id)  -- user turns only
+);
 """
 
 
@@ -106,6 +122,106 @@ def insert_mistakes(db_path: Path, utterance_id: int | None, mistakes: list[dict
     except (sqlite3.Error, KeyError, OSError) as e:
         print(f"  (warning: failed to log mistakes: {e})")
         return 0
+
+
+def create_chat_session(db_path: Path, backend: str, model: str, correct_mode: bool) -> int | None:
+    try:
+        conn = init_db(db_path)
+        try:
+            with conn:
+                cur = conn.execute(
+                    "INSERT INTO chat_session (started_ts, backend, model, correct_mode)"
+                    " VALUES (?, ?, ?, ?)",
+                    (datetime.now().isoformat(timespec="seconds"), backend, model, int(correct_mode)),
+                )
+            return cur.lastrowid
+        finally:
+            conn.close()
+    except (sqlite3.Error, OSError) as e:
+        print(f"  (warning: failed to create chat session: {e})")
+        return None
+
+
+def end_chat_session(db_path: Path, session_id: int | None, summary: str | None) -> None:
+    if session_id is None:
+        return
+    try:
+        conn = init_db(db_path)
+        try:
+            with conn:
+                conn.execute(
+                    "UPDATE chat_session SET ended_ts = ?, summary = ? WHERE id = ?",
+                    (datetime.now().isoformat(timespec="seconds"), summary, session_id),
+                )
+        finally:
+            conn.close()
+    except (sqlite3.Error, OSError) as e:
+        print(f"  (warning: failed to close chat session: {e})")
+
+
+def insert_chat_message(
+    db_path: Path,
+    session_id: int | None,
+    role: str,
+    content: str,
+    utterance_id: int | None = None,
+) -> None:
+    if session_id is None:
+        return
+    try:
+        conn = init_db(db_path)
+        try:
+            with conn:
+                conn.execute(
+                    "INSERT INTO chat_message (session_id, role, content, utterance_id)"
+                    " VALUES (?, ?, ?, ?)",
+                    (session_id, role, content, utterance_id),
+                )
+        finally:
+            conn.close()
+    except (sqlite3.Error, OSError) as e:
+        print(f"  (warning: failed to log chat message: {e})")
+
+
+def learner_profile(db_path: Path, days: int = 30) -> str:
+    """Compact, deterministic description of the learner from collected data,
+    for embedding in chat system prompts. No LLM call."""
+    try:
+        conn = init_db(db_path)
+        try:
+            since = (f"-{days} days",)
+            n_utt = conn.execute(
+                "SELECT COUNT(*) FROM utterance WHERE ts >= datetime('now', ?)", since
+            ).fetchone()[0]
+            cats = conn.execute(
+                "SELECT m.category, COUNT(*) n FROM mistake m"
+                " JOIN utterance u ON u.id = m.utterance_id"
+                " WHERE u.ts >= datetime('now', ?)"
+                " GROUP BY m.category ORDER BY n DESC LIMIT 4",
+                since,
+            ).fetchall()
+            examples = conn.execute(
+                "SELECT original, correction FROM mistake ORDER BY id DESC LIMIT 3"
+            ).fetchall()
+        finally:
+            conn.close()
+    except (sqlite3.Error, OSError):
+        return "No learner data available yet; assume an intermediate learner."
+
+    if n_utt < 5 and not cats:
+        return (
+            "The learner is new to this tool, so there is no reliable error data yet. "
+            "Assume a motivated intermediate learner."
+        )
+
+    parts = [f"Over the last {days} days the learner produced {n_utt} logged utterances."]
+    if cats:
+        freq = ", ".join(f"{category} ({n}×)" for category, n in cats)
+        parts.append(f"Most frequent error categories: {freq}.")
+    if examples:
+        ex = "; ".join(f'"{orig}" → "{corr}"' for orig, corr in examples)
+        parts.append(f"Recent corrections: {ex}.")
+    return " ".join(parts)
 
 
 def mistake_stats(db_path: Path, days: int = 14) -> list[tuple[str, int]]:

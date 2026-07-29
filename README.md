@@ -80,6 +80,22 @@ Always-on: `cp systemd/speakcoach.service ~/.config/systemd/user/ && systemctl -
 - `uv run speakcoach practice` — speak; get corrections with explanations, a native-idiomatic alternative, spoken read-back; mistakes land in SQLite.
 - `uv run speakcoach lesson` — one mini-lesson from your most frequent recent mistake categories (needs ≥3 logged mistakes; idempotent per day). Automate at 08:00: `cp systemd/speakcoach-lesson.{service,timer} ~/.config/systemd/user/ && systemctl --user daemon-reload && systemctl --user enable --now speakcoach-lesson.timer`
 
+### Chat (free conversation practice)
+
+```bash
+uv run speakcoach chat                # voice: Enter to record, Enter to stop, Ctrl+C to end
+uv run speakcoach chat --text         # typed REPL instead
+uv run speakcoach chat --correct      # partner gently recasts your errors while chatting
+uv run speakcoach chat --api          # use the OpenAI-compatible API from .env
+```
+
+A natural conversation partner (local qwen3:14b by default) that knows your goal and
+a profile built from your logged mistakes. Replies are printed and read aloud.
+Ending the session (Ctrl+C) runs the local coach over your turns — mistakes land in
+the same DB that feeds daily lessons — and the chat model writes a short session note.
+For the API backend set `CHAT_API_BASE_URL`, `CHAT_API_KEY`, and `CHAT_API_MODEL`
+in `.env` (works with any OpenAI-compatible provider); `--model` overrides per session.
+
 ### ydotool auto-type (optional)
 
 Default injection is clipboard-paste. To have text typed directly into the focused field:
