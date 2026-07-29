@@ -9,8 +9,12 @@ hosts without libportaudio2.
 
 import io
 import queue
+import re
+import threading
 
 SAMPLE_RATE = 16000
+
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?…])\s+")
 
 
 class Recorder:
@@ -81,3 +85,42 @@ def play(wav: bytes) -> None:
     data, sample_rate = sf.read(io.BytesIO(wav), dtype="float32")
     sd.play(data, sample_rate)
     sd.wait()
+
+
+def split_sentences(text: str, min_chars: int = 30) -> list[str]:
+    """Split text into sentence-ish chunks for incremental TTS. Very short
+    sentences merge into their neighbor — tiny chunks sound choppy and waste
+    per-request overhead."""
+    parts = [p.strip() for p in _SENTENCE_SPLIT_RE.split(text) if p.strip()]
+    merged: list[str] = []
+    for part in parts:
+        if merged and len(merged[-1]) < min_chars:
+            merged[-1] += " " + part
+        else:
+            merged.append(part)
+    return merged or ([text.strip()] if text.strip() else [])
+
+
+def play_pipelined(texts: list[str], synthesize) -> None:
+    """Speak chunks in order, synthesizing ahead in a background thread, so
+    audio starts after the FIRST chunk is ready instead of the whole text.
+    `synthesize(text) -> wav bytes`."""
+    buf: queue.Queue = queue.Queue(maxsize=2)  # bounded: at most 2 chunks ahead
+
+    def producer() -> None:
+        try:
+            for text in texts:
+                buf.put(("wav", synthesize(text)))
+        except Exception as e:
+            buf.put(("err", e))
+            return
+        buf.put(("end", None))
+
+    threading.Thread(target=producer, daemon=True).start()
+    while True:
+        kind, item = buf.get()
+        if kind == "end":
+            return
+        if kind == "err":
+            raise RuntimeError(f"TTS failed mid-speech: {item}")
+        play(item)

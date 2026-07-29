@@ -4,7 +4,7 @@ A dedicated terminal session — latency is acceptable here, unlike dictation.
 """
 
 from .asr_client import ASRClient
-from .audio import Recorder, play, rms
+from .audio import Recorder, play_pipelined, rms, split_sentences
 from .config import Config
 from .db import insert_mistakes, log_utterance, update_utterance_cleaned
 from .dictation import SILENCE_RMS
@@ -78,6 +78,6 @@ def run_practice(config: Config) -> None:
         try:
             readback = corrected if not native or native == corrected \
                 else f"{corrected} ... Or more naturally: {native}"
-            play(tts.synthesize(readback))
+            play_pipelined(split_sentences(readback), tts.synthesize)
         except Exception as e:
             print(f"  (read-back unavailable: {e})")

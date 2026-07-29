@@ -11,7 +11,7 @@ and the chat model writes a short session note.
 import time
 
 from .asr_client import ASRClient
-from .audio import Recorder, play, rms
+from .audio import Recorder, play_pipelined, rms, split_sentences
 from .chat_client import ApiChatClient
 from .config import Config
 from .db import (
@@ -142,7 +142,9 @@ def run_chat(
             print(f"partner ({time.monotonic() - t0:.1f}s) > {reply}\n")
             if tts is not None:
                 try:
-                    play(tts.synthesize(reply))
+                    # per-sentence pipeline: audio starts after the first
+                    # sentence renders, the rest synthesizes during playback
+                    play_pipelined(split_sentences(reply), tts.synthesize)
                 except Exception as e:
                     print(f"(read-aloud unavailable: {e})")
     except (KeyboardInterrupt, EOFError):
