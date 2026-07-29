@@ -1,14 +1,20 @@
-# Always-on host client (user unit). Activated in Milestone 9:
+# Always-on dictation loop (user unit — no sudo). Install:
 #   cp systemd/speakcoach.service ~/.config/systemd/user/
-#   systemctl --user enable --now speakcoach
+#   systemctl --user daemon-reload && systemctl --user enable --now speakcoach
+# Then trigger recording from anywhere via the GNOME custom shortcut
+# (sh -c 'kill -USR1 $(cat $XDG_RUNTIME_DIR/speakcoach-dictate.pid)')
+# or `speakcoach toggle`; desktop notifications provide the feedback.
 [Unit]
-Description=SpeakCoach host client (push-to-talk dictation)
-After=default.target
+Description=SpeakCoach dictation (push-to-talk to clipboard)
+After=graphical-session.target
 
 [Service]
-# Adjust the repo path if it moves.
+# Adjust if the repo lives elsewhere.
 WorkingDirectory=%h/projects/spoken-english-tutor/host_client
-ExecStart=uv run speakcoach dictate
+ExecStart=/usr/bin/env uv run speakcoach dictate
+# wl-copy and audio need the session; user units get XDG_RUNTIME_DIR/DBus
+# automatically, but not the Wayland display name.
+Environment=WAYLAND_DISPLAY=wayland-0
 Restart=on-failure
 RestartSec=5
 

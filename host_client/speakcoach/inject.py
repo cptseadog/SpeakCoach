@@ -30,8 +30,22 @@ class ClipboardBackend(InjectionBackend):
 
 
 class YdotoolBackend(InjectionBackend):
+    """Auto-types into the focused field. Needs the ydotoold user daemon with
+    /dev/uinput access — see the README's "ydotool auto-type" section."""
+
+    def __init__(self) -> None:
+        if shutil.which("ydotool") is None:
+            raise RuntimeError("ydotool not found — see README 'ydotool auto-type' for setup")
+
     def inject(self, text: str) -> str:
-        raise NotImplementedError("ydotool auto-type arrives in Milestone 9")
+        proc = subprocess.run(
+            ["ydotool", "type", "--", text], capture_output=True, text=True, timeout=30
+        )
+        if proc.returncode != 0:
+            raise RuntimeError(
+                f"ydotool failed: {proc.stderr.strip() or 'is the ydotoold daemon running?'}"
+            )
+        return "typed into the focused field"
 
 
 def get_backend(config: Config) -> InjectionBackend:

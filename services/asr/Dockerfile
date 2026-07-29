@@ -1,15 +1,17 @@
-# CPU-only image. faster-whisper runs on CTranslate2, so no PyTorch is needed;
-# CTranslate2's CUDA support is in the same wheel, making the M8 GPU flip a
-# config change (DEVICE=cuda), not an image change — the GPU overlay just needs
-# the NVIDIA runtime libraries visible (nvidia container toolkit provides them).
+# Works on CPU and GPU (sm_120 verified). faster-whisper runs on CTranslate2 —
+# no PyTorch. For GPU, the NVIDIA container toolkit injects the driver, but
+# cuBLAS/cuDNN must come from the image: the pip wheels below provide them
+# (adds ~1 GB; harmless when running on CPU).
 FROM python:3.12-slim
 
-# Whisper weights land in the asr-models volume, not the image
 ENV HF_HOME=/models/hf
+# CTranslate2 dlopens these at runtime when DEVICE=cuda
+ENV LD_LIBRARY_PATH=/usr/local/lib/python3.12/site-packages/nvidia/cublas/lib:/usr/local/lib/python3.12/site-packages/nvidia/cudnn/lib
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir nvidia-cublas-cu12 "nvidia-cudnn-cu12>=9"
 
 COPY server.py .
 
