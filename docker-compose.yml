@@ -1,6 +1,10 @@
 # CPU-only base. GPU is layered on via docker-compose.gpu.yml once the card is in:
 #   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d
 # Model servers only — the host client (mic, hotkey, injection) runs natively via uv.
+#
+# RESTART_POLICY=unless-stopped (default) means Docker starts these at boot and
+# the ASR model sits in VRAM all day. Set RESTART_POLICY=no in .env for manual
+# control (./scripts/preheat.sh before a session, ./scripts/cooldown.sh after).
 services:
   asr:
     build: ./services/asr
@@ -11,7 +15,7 @@ services:
       ASR_MODEL: ${ASR_MODEL:-distil-large-v3}
     volumes:
       - asr-models:/models
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-unless-stopped}
 
   tts:
     build: ./services/tts
@@ -23,7 +27,7 @@ services:
       TTS_BACKEND: ${TTS_BACKEND:-kokoro}
     volumes:
       - tts-models:/models
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-unless-stopped}
 
   llm:
     image: ollama/ollama:latest
@@ -31,7 +35,7 @@ services:
       - "127.0.0.1:${LLM_PORT:-11434}:11434"
     volumes:
       - ollama-models:/root/.ollama
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-unless-stopped}
 
 volumes:
   asr-models:

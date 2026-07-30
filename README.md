@@ -32,6 +32,10 @@ What git does *not* carry, and where it comes from:
 | Ollama models (~9 GB for qwen3:14b) | one explicit step: `./scripts/pull_models.sh` |
 | SQLite DB / retained audio | created on first use at `DB_PATH` (default `~/.local/share/speakcoach/`) |
 
+Nothing in this project installs a system-level autostart. The only thing that
+brings the services up at boot is Docker's own `restart` policy — see
+[Starting and stopping the stack](#starting-and-stopping-the-stack).
+
 Steps:
 
 ```bash
@@ -55,6 +59,28 @@ Host prerequisites (the install script checks these): Docker + compose plugin, [
 ⚠️ Blackwell/sm_120 note: anything using PyTorch needs CUDA 12.8+ / cu128 wheels / torch ≥ 2.7. The current images sidestep this (ASR uses CTranslate2 + pip-provided cuBLAS/cuDNN; TTS stays on CPU) — it only bites if you move Kokoro to the GPU.
 
 Measured hot-path latency (RTX 5070 Ti, warm): ASR 0.26 s for 6 s of speech + cleanup 0.4 s ≈ **under 1 s** from stop-speaking to clipboard. CPU-only for reference: ~10 s.
+
+## Starting and stopping the stack
+
+`RESTART_POLICY` in `.env` decides who starts the model servers:
+
+| `RESTART_POLICY` | Behaviour | Idle cost |
+|---|---|---|
+| `unless-stopped` (default) | Docker starts all three at boot; models stay resident | ~4 GB VRAM (ASR); LLM unloads after its 30 min `keep_alive` |
+| `no` | nothing starts by itself — you drive it | 0 |
+
+Manual mode:
+
+```bash
+./scripts/preheat.sh            # start + load every model (~23 s cold, 0 s if already warm)
+./scripts/preheat.sh --no-llm   # skip the ~11 GB qwen3 load (enough for transcribe/speak)
+./scripts/cooldown.sh           # unload the LLM, stop the containers, free the VRAM
+```
+
+Both scripts are idempotent and safe to alias. Containers are stopped, not
+removed, so nothing re-downloads. Changing `RESTART_POLICY` takes effect on the
+next `docker compose up -d` (it recreates the containers). Warm from cold:
+ASR 4 s, TTS 9 s, qwen3:14b 23 s → 13.5/16 GB VRAM.
 
 ## Daily use
 
