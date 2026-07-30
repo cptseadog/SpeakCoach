@@ -11,6 +11,10 @@ After=graphical-session.target
 [Service]
 # Adjust if the repo lives elsewhere.
 WorkingDirectory=%h/projects/spoken-english-tutor/host_client
+# Bring the containers up if RESTART_POLICY=no (no-op when already warm). The
+# leading "-" keeps a failure non-fatal: the loop still starts and reports
+# per-utterance errors rather than refusing to run at all.
+ExecStartPre=-%h/projects/spoken-english-tutor/scripts/preheat.sh
 ExecStart=/usr/bin/env uv run speakcoach dictate
 # wl-copy and audio need the session; user units get XDG_RUNTIME_DIR/DBus
 # automatically, but not the Wayland display name.

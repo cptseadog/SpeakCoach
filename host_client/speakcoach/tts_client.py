@@ -2,6 +2,7 @@
 
 import httpx
 
+from . import http
 from .config import Config
 
 
@@ -12,7 +13,8 @@ class TTSClient:
 
     def synthesize(self, text: str, voice: str | None = None, speed: float = 1.0) -> bytes:
         """Return WAV bytes for `text`. Generous timeout — CPU synthesis is slow."""
-        resp = httpx.post(
+        resp = http.post(
+            "TTS",
             f"{self.base_url}/v1/audio/speech",
             json={
                 "input": text,

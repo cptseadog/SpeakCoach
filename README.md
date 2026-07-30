@@ -82,6 +82,13 @@ removed, so nothing re-downloads. Changing `RESTART_POLICY` takes effect on the
 next `docker compose up -d` (it recreates the containers). Warm from cold:
 ASR 4 s, TTS 9 s, qwen3:14b 23 s → 13.5/16 GB VRAM.
 
+Forgetting to preheat is harmless: every command reports
+`cannot reach the … service … start the services with ./scripts/preheat.sh`
+instead of a traceback, and the always-on dictation loop keeps running through a
+service outage rather than dying on the utterance that hit it. Both systemd units
+call `preheat.sh` themselves, so the 08:00 lesson works in manual mode too —
+though it leaves the stack up afterwards, so run `cooldown.sh` if you care.
+
 ## Daily use
 
 ### Dictation

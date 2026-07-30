@@ -7,4 +7,8 @@ Description=SpeakCoach daily mini-lesson generation
 [Service]
 Type=oneshot
 WorkingDirectory=%h/projects/spoken-english-tutor/host_client
+# With RESTART_POLICY=no the containers are stopped at 08:00, so start them
+# first. Idempotent and ~0.3 s when they are already warm (always-on mode).
+# Note: in manual mode this leaves the stack running — cooldown.sh when done.
+ExecStartPre=%h/projects/spoken-english-tutor/scripts/preheat.sh
 ExecStart=/usr/bin/env uv run speakcoach lesson

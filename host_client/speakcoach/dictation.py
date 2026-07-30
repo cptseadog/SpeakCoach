@@ -98,16 +98,23 @@ def run_dictation(config: Config) -> None:
                 _notify("SpeakCoach", "heard nothing")
                 continue
 
-            t0 = time.monotonic()
-            raw = asr.transcribe(wav)["text"]
-            t1 = time.monotonic()
-            if not raw:
-                print("[ready] (silence)")
-                _notify("SpeakCoach", "heard nothing")
+            try:
+                t0 = time.monotonic()
+                raw = asr.transcribe(wav)["text"]
+                t1 = time.monotonic()
+                if not raw:
+                    print("[ready] (silence)")
+                    _notify("SpeakCoach", "heard nothing")
+                    continue
+                cleaned = llm.clean_dictation(raw)
+                t2 = time.monotonic()
+                note = backend.inject(cleaned)
+            except RuntimeError as e:
+                # a daemon that may run all day must survive one bad utterance
+                # (services stopped, model evicted) instead of needing a restart
+                print(f"[ready] error: {e}")
+                _notify("SpeakCoach failed", str(e)[:150])
                 continue
-            cleaned = llm.clean_dictation(raw)
-            t2 = time.monotonic()
-            note = backend.inject(cleaned)
 
             # text is already delivered; logging happens off the critical path
             audio_path = None

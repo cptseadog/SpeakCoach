@@ -67,14 +67,19 @@ def main() -> None:
 
     args = parser.parse_args()
     config = load_config()
+    # service errors (stopped containers, bad model name) are normal operating
+    # states, not bugs — report the message, not a traceback
+    try:
+        _run(args, config)
+    except RuntimeError as e:
+        raise SystemExit(f"error: {e}")
 
+
+def _run(args, config) -> None:
     if args.command == "chat":
         from .chat import run_chat
-        try:
-            run_chat(config, use_api=args.api, text_mode=args.text,
-                     correct=args.correct, model_override=args.model)
-        except RuntimeError as e:
-            raise SystemExit(f"error: {e}")
+        run_chat(config, use_api=args.api, text_mode=args.text,
+                 correct=args.correct, model_override=args.model)
         return
 
     if args.command == "log":

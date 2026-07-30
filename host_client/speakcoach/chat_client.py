@@ -7,6 +7,7 @@ chat.py, so the chat loop doesn't care which backend it's talking to.
 
 import httpx
 
+from . import http
 from .config import Config
 
 
@@ -23,8 +24,10 @@ class ApiChatClient:
         self._headers = {"Authorization": f"Bearer {config.chat_api_key}"}
 
     def send(self, messages: list[dict]) -> str:
-        resp = httpx.post(
+        resp = http.post(
+            "chat API",
             f"{self.base_url}/chat/completions",
+            hint="check CHAT_API_BASE_URL and your network",
             headers=self._headers,
             json={"model": self.model, "messages": messages},
             timeout=httpx.Timeout(120.0, connect=10.0),

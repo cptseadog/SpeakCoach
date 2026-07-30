@@ -11,6 +11,7 @@ import re
 
 import httpx
 
+from . import http
 from .config import Config
 
 MISTAKE_CATEGORIES = (
@@ -87,7 +88,8 @@ class LLMClient:
 
     def clean_dictation(self, raw_transcript: str) -> str:
         """Hot path: minimal fixes + punctuation, preserving meaning and voice."""
-        resp = httpx.post(
+        resp = http.post(
+            "LLM",
             f"{self.base_url}/api/chat",
             json={
                 "model": self.dictation_model,
@@ -112,7 +114,8 @@ class LLMClient:
     def chat(self, messages: list[dict], model: str | None = None) -> str:
         """Multi-turn conversation via Ollama's native /api/chat (think=false —
         same latency reasoning as dictation; /v1 cannot disable qwen3 thinking)."""
-        resp = httpx.post(
+        resp = http.post(
+            "LLM",
             f"{self.base_url}/api/chat",
             json={
                 "model": model or self.model,
@@ -143,7 +146,8 @@ class LLMClient:
             f"The learner's actual recent mistakes:\n{example_lines}\n\n"
             "Write the mini-lesson now."
         )
-        resp = httpx.post(
+        resp = http.post(
+            "LLM",
             f"{self.base_url}/api/chat",
             json={
                 "model": self.model,
@@ -170,7 +174,8 @@ class LLMClient:
         carry category/original/correction/explanation/severity. Ollama's
         structured-output `format` pins the shape; parsing is still defensive
         because local models occasionally ignore schemas."""
-        resp = httpx.post(
+        resp = http.post(
+            "LLM",
             f"{self.base_url}/api/chat",
             json={
                 "model": self.model,

@@ -2,6 +2,7 @@
 
 import httpx
 
+from . import http
 from .config import Config
 
 
@@ -11,7 +12,8 @@ class ASRClient:
 
     def transcribe(self, wav: bytes) -> dict:
         """Return the service's JSON: text, language, duration, transcribe_seconds."""
-        resp = httpx.post(
+        resp = http.post(
+            "ASR",
             f"{self.base_url}/v1/audio/transcriptions",
             files={"file": ("utterance.wav", wav, "audio/wav")},
             data={"language": "en"},
