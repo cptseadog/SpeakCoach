@@ -122,19 +122,44 @@ the same DB that feeds daily lessons — and the chat model writes a short sessi
 For the API backend set `CHAT_API_BASE_URL`, `CHAT_API_KEY`, and `CHAT_API_MODEL`
 in `.env` (works with any OpenAI-compatible provider); `--model` overrides per session.
 
-### ydotool auto-type (optional)
+### ydotool auto-type (optional — you probably don't want this)
 
-Default injection is clipboard-paste. To have text typed directly into the focused field:
+`INJECTION_BACKEND=clipboard` (wl-clipboard, the default) copies the transcript and
+you press **Ctrl+V**. It needs no daemon, no elevated device access, and no
+package beyond `wl-clipboard`. **Nothing in SpeakCoach requires ydotool** — it is
+purely a convenience for having text typed straight into the focused field.
+
+⚠️ **Read this before installing it.** On Ubuntu, `apt install ydotool` registers
+its user service *globally* (`/etc/systemd/user/default.target.wants/ydotool.service`),
+so `ydotoold` tries to start for every user at every login. It then fails with
+`status=2/INVALIDARGUMENT` because `/dev/uinput` is `root:input` `0660` and your
+account is not in the `input` group — giving you a permanently failing unit and a
+noisy boot for a feature you may not even use. The package's own udev rule
+(`/usr/lib/udev/rules.d/80-uinput.rules`) sets the group but cannot add you to it.
+
+If you install it, the group membership is the step that matters:
 
 ```bash
 sudo apt install ydotool
-sudo usermod -aG input $USER
-echo 'KERNEL=="uinput", GROUP="input", MODE="0660"' | sudo tee /etc/udev/rules.d/80-uinput.rules
-# log out and back in, then:
-systemctl --user enable --now ydotoold
+sudo usermod -aG input $USER     # without this, ydotoold exits 2 at every login
+# log out and back in (group changes need a fresh session), then:
+systemctl --user enable --now ydotool.service
 ```
 
-and set `INJECTION_BACKEND=ydotool` in `.env`.
+and set `INJECTION_BACKEND=ydotool` in `.env`. Verify with
+`systemctl --user status ydotool.service` — it must be `active (running)`.
+
+To remove it again:
+
+```bash
+systemctl --user disable --now ydotool.service   # or: --user mask, if enabled globally
+sudo apt purge --autoremove ydotool
+systemctl --user unmask ydotool.service          # only if you masked it
+```
+
+Either way dictation keeps working: selecting `ydotool` when the binary is absent
+logs a warning and uses the clipboard, and if `ydotoold` dies mid-session the
+transcript is copied to the clipboard rather than lost.
 
 ## Status of the Project
 
